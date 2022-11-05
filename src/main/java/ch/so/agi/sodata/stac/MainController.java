@@ -13,7 +13,7 @@ public class MainController {
 
     @GetMapping("/ping")
     public ResponseEntity<String> ping() {
-        return new ResponseEntity<String>("sodata", HttpStatus.OK);
+        return new ResponseEntity<String>("sodata-stac", HttpStatus.OK);
     }
 
 }
