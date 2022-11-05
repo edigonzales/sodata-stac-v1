@@ -2,6 +2,7 @@ package ch.so.agi.sodata.stac;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
@@ -38,6 +39,9 @@ public class ConfigService {
 
     @org.springframework.beans.factory.annotation.Value("${app.configFile}")
     private String CONFIG_FILE;   
+
+    @org.springframework.beans.factory.annotation.Value("${app.rootHref}")
+    private String ROOT_HREF;   
 
     @Autowired
     private Context context;
@@ -103,8 +107,13 @@ public class ConfigService {
             }
         }
         
-        stacCreator.create_catalog("/Users/stefan/tmp/staccreator/", collections);
+        // Weil es kein Request gibt, funktioniert 'ServletUriComponentsBuilder'... nicht.
+        // Die Anwendung weiss so nichts von einem möglichen Reverse Proxy / API-Gateway etc.
+        // Root_href ist somit Teil der Konfiguration. 
+        stacCreator.create_catalog("/Users/stefan/tmp/staccreator/", collections, ROOT_HREF);
         
         context.close();
     }
+    
+
 }

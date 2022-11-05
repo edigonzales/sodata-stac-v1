@@ -1,5 +1,6 @@
 package ch.so.agi.sodata.stac;
 
+import java.net.InetAddress;
 import java.nio.file.Paths;
 
 import org.graalvm.polyglot.Context;
@@ -9,6 +10,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.filter.ForwardedHeaderFilter;
 
 @SpringBootApplication
 @Configuration
@@ -17,6 +19,11 @@ public class SodataStacApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(SodataStacApplication.class, args);
 	}
+	
+    @Bean
+    ForwardedHeaderFilter forwardedHeaderFilter() {
+        return new ForwardedHeaderFilter();
+    } 
 
     // see: https://blogs.oracle.com/javamagazine/post/java-graalvm-polyglot-python-r
     // Relevant für mich?
@@ -43,6 +50,7 @@ public class SodataStacApplication {
     @Bean
     CommandLineRunner init(ConfigService configService) {
         return args -> {
+                        
             configService.readXml();
             
             // Testeshalber stac hier.  

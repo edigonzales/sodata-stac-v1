@@ -22,10 +22,12 @@ class StacCreator:
                                     theme_publication.getBbox().getTop()]])
         # Umweg via date notwendig, da ein Java-(Local-)Date-Objekt nicht gemappt wird. Es bleibt 'foreign'.
         # replace(tzinfo=...) funktioniert nicht mit date, sondern nur mit datetime.
-        collection_interval = sorted([
-                                    datetime.fromisoformat(theme_publication.getSecondToLastPublishingDate().toString()).replace(tzinfo=timezone(timedelta(hours=2))), 
-                                    datetime.fromisoformat(theme_publication.getLastPublishingDate().toString()).replace(tzinfo=timezone(timedelta(hours=2)))
-                                    ]) 
+        # collection_interval = sorted([
+        #                             datetime.fromisoformat(theme_publication.getSecondToLastPublishingDate().toString()).replace(tzinfo=timezone(timedelta(hours=2))), 
+        #                             datetime.fromisoformat(theme_publication.getLastPublishingDate().toString()).replace(tzinfo=timezone(timedelta(hours=2)))
+        #                             ]) 
+        collection_interval = [None, datetime.fromisoformat(theme_publication.getLastPublishingDate().toString()).replace(tzinfo=timezone(timedelta(hours=2)))]
+
         temporal_extent = pystac.TemporalExtent(intervals=[collection_interval])
         collection_extent = pystac.Extent(spatial=spatial_extent, temporal=temporal_extent)
 
@@ -42,12 +44,7 @@ class StacCreator:
         collection.normalize_and_save(root_href=os.path.join(collection_file_path, collection_id),
                            catalog_type=pystac.CatalogType.SELF_CONTAINED)
 
-
-        # catalog = pystac.Catalog(id='test-catalog', description='Tutorial catalog.')
-        # catalog.add_child(child=collection)
-        # catalog.normalize_and_save(root_href=os.path.join(collection_file_path),catalog_type=pystac.CatalogType.SELF_CONTAINED);
-
-    def create_catalog(self, collection_file_path, collections):
+    def create_catalog(self, collection_file_path, collections, root_url):
         print("Hello from create_catalog")
 
         catalog = pystac.Catalog(id='test-catalog', description='Tutorial catalog.')
@@ -56,8 +53,9 @@ class StacCreator:
             print(collection_id)
             collection = pystac.Collection.from_file(os.path.join(collection_file_path,collection_id, "collection.json"))
             catalog.add_child(child=collection)
-            catalog.normalize_and_save(root_href=os.path.join(collection_file_path),catalog_type=pystac.CatalogType.SELF_CONTAINED);            
-
+            #catalog.normalize_and_save(root_href=os.path.join(collection_file_path),catalog_type=pystac.CatalogType.ABSOLUTE_PUBLISHED);            
+            catalog.normalize_hrefs(root_href=root_url);            
+            catalog.save(catalog_type=pystac.CatalogType.ABSOLUTE_PUBLISHED, dest_href=collection_file_path)
 
 polyglot.export_value("StacCreator", StacCreator)
 
