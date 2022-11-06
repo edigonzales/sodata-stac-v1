@@ -26,6 +26,7 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+<!--
         <dependency>
             <groupId>io.github.sogis</groupId>
             <artifactId>meta2file</artifactId>
@@ -41,7 +42,7 @@
                 </exclusion>
             </exclusions>
         </dependency>
-
+-->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
@@ -120,7 +121,12 @@
                 <artifactId>native-maven-plugin</artifactId>
                 <configuration>
                     <buildArgs combine.children="append">
-                    <buildArg>--verbose</buildArg>
+                        <buildArg>--verbose</buildArg>
+                        
+                        <buildArg>--language:python</buildArg>
+                        <buildArg>-Dorg.graalvm.launcher.relative.python.home=${env.JAVA_HOME}/languages/python</buildArg>
+                        <buildArg>-Dorg.graalvm.launcher.relative.llvm.home=${env.JAVA_HOME}/languages/llvm</buildArg>
+                        
                     </buildArgs>
                 </configuration>
             </plugin>

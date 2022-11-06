@@ -88,7 +88,7 @@ class StacCreator:
             collection.add_item(item)
 
         # https://www.jsonschemavalidator.net/ 
-        # Gemäss Online-Validator sind die JSON-Dateien korrekt ggü collection- und item Schema 
+        # Gemäss Online-Validator sind die JSON-Dateien korrekt ggü collection- und item Schema. 
         #collection.validate_all()
 
         # Save everything to disk

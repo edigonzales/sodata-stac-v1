@@ -8,9 +8,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
-import ch.so.agi.meta2file.model.BoundingBox;
-import ch.so.agi.meta2file.model.Item;
-import ch.so.agi.meta2file.model.ThemePublication;
+import ch.so.agi.sodata.stac.model.BoundingBox;
+import ch.so.agi.sodata.stac.model.Item;
+import ch.so.agi.sodata.stac.model.ThemePublication;
 import jakarta.annotation.PostConstruct;
 
 import java.io.File;
@@ -24,9 +24,9 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
+//import org.graalvm.polyglot.Context;
+//import org.graalvm.polyglot.Source;
+//import org.graalvm.polyglot.Value;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -49,7 +49,8 @@ public class ConfigService {
     private GeoJsonWriter geoJsonWriter = new GeoJsonWriter();
 
     private static final String PYTHON = "python";
-    private static final String VENV_EXECUTABLE = ConfigService.class.getClassLoader().getResource(Paths.get("venv", "bin", "graalpy").toString()).getPath();
+    // TODO: not working with native image. brauche ich hier aber gar nicht?
+//    private static final String VENV_EXECUTABLE = ConfigService.class.getClassLoader().getResource(Paths.get("venv", "bin", "graalpy").toString()).getPath();
     private static final String SOURCE_FILE_NAME = "staccreator.py";
 
     @org.springframework.beans.factory.annotation.Value("${app.configFile}")
@@ -61,29 +62,33 @@ public class ConfigService {
     @org.springframework.beans.factory.annotation.Value("${app.filesServerUrl}")
     private String FILES_SERVER_URL;   
 
-    @Autowired
-    private Context context;
-    
-    private StacCreator stacCreator;
-    
-    @PostConstruct
-    public void init() {
-        InputStreamReader code = new InputStreamReader(ConfigService.class.getClassLoader().getResourceAsStream(SOURCE_FILE_NAME));
-
-        Source source;
-        try {
-            source = Source.newBuilder(PYTHON, code, SOURCE_FILE_NAME).build();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        context.eval(source);
-        
-        Value pystacCreatorClass = context.getPolyglotBindings().getMember("StacCreator");
-        Value pystacCreator = pystacCreatorClass.newInstance();
-        
-        stacCreator = pystacCreator.as(StacCreator.class);
+    public void foo() {
+        System.out.println("foo");
     }
     
+//    @Autowired
+//    private Context context;
+//    
+//    private StacCreator stacCreator;
+//    
+//    @PostConstruct
+//    public void init() {
+//        InputStreamReader code = new InputStreamReader(ConfigService.class.getClassLoader().getResourceAsStream(SOURCE_FILE_NAME));
+//
+//        Source source;
+//        try {
+//            source = Source.newBuilder(PYTHON, code, SOURCE_FILE_NAME).build();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
+//        context.eval(source);
+//        
+//        Value pystacCreatorClass = context.getPolyglotBindings().getMember("StacCreator");
+//        Value pystacCreator = pystacCreatorClass.newInstance();
+//        
+//        stacCreator = pystacCreator.as(StacCreator.class);
+//    }
+//    
     public void readXml() throws XMLStreamException, IOException, ParseException {
         var xmlMapper = new XmlMapper();
         xmlMapper.registerModule(new JavaTimeModule());
@@ -124,7 +129,7 @@ public class ConfigService {
                     }
                     themePublication.setItems(itemsList);
                     
-                    stacCreator.create("/Users/stefan/tmp/staccreator/", themePublication, FILES_SERVER_URL);
+//                    stacCreator.create("/Users/stefan/tmp/staccreator/", themePublication, FILES_SERVER_URL);
                 }
             }
         }
@@ -132,9 +137,9 @@ public class ConfigService {
         // Weil es kein Request gibt, funktioniert 'ServletUriComponentsBuilder'... nicht.
         // Die Anwendung weiss so nichts von einem möglichen Reverse Proxy / API-Gateway etc.
         // Root_href ist somit Teil der Konfiguration. 
-        stacCreator.create_catalog("/Users/stefan/tmp/staccreator/", collections, ROOT_HREF);
+//        stacCreator.create_catalog("/Users/stefan/tmp/staccreator/", collections, ROOT_HREF);
         
-        context.close();
+//        context.close();
     }
     
     // https://github.com/edigonzales-archiv/geokettle_freeframe_plugin/blob/master/src/main/java/org/catais/plugin/freeframe/FreeFrameTransformator.java
