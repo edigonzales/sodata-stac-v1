@@ -9,6 +9,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import ch.so.agi.meta2file.model.BoundingBox;
+import ch.so.agi.meta2file.model.Item;
 import ch.so.agi.meta2file.model.ThemePublication;
 import jakarta.annotation.PostConstruct;
 
@@ -26,12 +27,26 @@ import javax.xml.stream.XMLStreamException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.impl.CoordinateArraySequence;
+import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKTReader;
+import org.locationtech.jts.io.geojson.GeoJsonWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Service
 public class ConfigService {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
+
+    private WKTReader wktReader = new WKTReader();
+    private GeoJsonWriter geoJsonWriter = new GeoJsonWriter();
 
     private static final String PYTHON = "python";
     private static final String VENV_EXECUTABLE = ConfigService.class.getClassLoader().getResource(Paths.get("venv", "bin", "graalpy").toString()).getPath();
@@ -41,7 +56,10 @@ public class ConfigService {
     private String CONFIG_FILE;   
 
     @org.springframework.beans.factory.annotation.Value("${app.rootHref}")
-    private String ROOT_HREF;   
+    private String ROOT_HREF; 
+    
+    @org.springframework.beans.factory.annotation.Value("${app.filesServerUrl}")
+    private String FILES_SERVER_URL;   
 
     @Autowired
     private Context context;
@@ -66,7 +84,7 @@ public class ConfigService {
         stacCreator = pystacCreator.as(StacCreator.class);
     }
     
-    public void readXml() throws XMLStreamException, IOException {
+    public void readXml() throws XMLStreamException, IOException, ParseException {
         var xmlMapper = new XmlMapper();
         xmlMapper.registerModule(new JavaTimeModule());
         xmlMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -79,30 +97,34 @@ public class ConfigService {
             xr.next();
             if (xr.getEventType() == XMLStreamConstants.START_ELEMENT) {
                 if ("themePublication".equals(xr.getLocalName())) {
-                    var themePublication = xmlMapper.readValue(xr, ThemePublication.class);
-                    var identifier = themePublication.getIdentifier();
-                    var items = themePublication.getItems();
-                    
+                    var themePublication = xmlMapper.readValue(xr, ThemePublication.class);                    
                     log.debug("Identifier: "+ themePublication.getIdentifier());
                     
+                    // Verwenden wir später, um aus sämtlichen Collections einen Catalog zu machen.
                     collections.add(themePublication.getIdentifier());
                     
-                    // Convert LV95-BoundingBox to WGS84-BoundingBox
-                    BoundingBox bbox = themePublication.getBbox();
-                    double bottom = ApproxSwissProj.CHtoWGSlat(bbox.getLeft(), bbox.getBottom());
-                    double left = ApproxSwissProj.CHtoWGSlng(bbox.getLeft(), bbox.getBottom());
-                    double top = ApproxSwissProj.CHtoWGSlat(bbox.getRight(), bbox.getTop());
-                    double right = ApproxSwissProj.CHtoWGSlng(bbox.getRight(), bbox.getTop());
-                    BoundingBox bboxWGS = new BoundingBox();
-                    bboxWGS.setBottom(bottom);
-                    bboxWGS.setLeft(left);
-                    bboxWGS.setTop(top);
-                    bboxWGS.setRight(right);
+                    // Sowohl die BBOX des Themas (der Collection) wie auch der Items
+                    // müssen nach WGS84 transformiert werden. Bei den Items muss zusätzlich
+                    // ebenfalls die Geometrie (der Footprint) transformiert werden.
+                    BoundingBox bboxWGS = convertBboxToWGS(themePublication.getBbox());
                     themePublication.setBbox(bboxWGS);
                     
-                    stacCreator.create("/Users/stefan/tmp/staccreator/", themePublication);
-
-
+                    var itemsList = new ArrayList<Item>();
+                    for (Item item : themePublication.getItems()) {
+                        BoundingBox itemBboxWGS = convertBboxToWGS(item.getBbox());
+                        item.setBbox(itemBboxWGS);
+                        
+                        var geom = wktReader.read(item.getGeometry());
+                        var geomWGS = convertGeometryToWGS(geom);
+                        geoJsonWriter.setEncodeCRS(false);
+                        var geomGeoJson = geoJsonWriter.write(geomWGS);
+                        item.setGeometry(geomGeoJson);
+                        
+                        itemsList.add(item);
+                    }
+                    themePublication.setItems(itemsList);
+                    
+                    stacCreator.create("/Users/stefan/tmp/staccreator/", themePublication, FILES_SERVER_URL);
                 }
             }
         }
@@ -115,5 +137,69 @@ public class ConfigService {
         context.close();
     }
     
+    // https://github.com/edigonzales-archiv/geokettle_freeframe_plugin/blob/master/src/main/java/org/catais/plugin/freeframe/FreeFrameTransformator.java
+    private Geometry convertGeometryToWGS(Geometry sourceGeometry) {
+        Geometry targetGeometry = null;
 
+        if (sourceGeometry instanceof MultiPolygon) {
+            int num = sourceGeometry.getNumGeometries();
+            Polygon[] polys = new Polygon[num];
+            for(int j=0; j<num; j++) {
+                polys[j] = transformPolygon((Polygon) sourceGeometry.getGeometryN(j));
+            }    
+            targetGeometry = (Geometry) new GeometryFactory().createMultiPolygon(polys);
+            
+        } else if (sourceGeometry instanceof Polygon) {
+            targetGeometry = (Geometry) transformPolygon((Polygon) sourceGeometry);
+        } else {
+            targetGeometry = sourceGeometry;
+        }
+        return targetGeometry;
+    }
+    
+    private Polygon transformPolygon(Polygon p) {
+        LineString shell = (LineString) p.getExteriorRing();
+        LineString shellTransformed = transformLineString(shell);
+        
+        LinearRing[] rings = new LinearRing[p.getNumInteriorRing()];
+        int num = p.getNumInteriorRing();
+        for(int i=0; i<num; i++) {
+            LineString line = transformLineString(p.getInteriorRingN(i));   
+            rings[i] = new LinearRing(line.getCoordinateSequence(), new GeometryFactory()); 
+        }               
+        return new Polygon(new LinearRing(shellTransformed.getCoordinateSequence(), new GeometryFactory()), rings, new GeometryFactory());
+    }
+
+    private LineString transformLineString(LineString l) {
+        Coordinate[] coords = l.getCoordinates();
+        int num = coords.length;
+
+        Coordinate[] coordsTransformed = new Coordinate[num];
+        for(int i=0; i<num; i++) {
+            coordsTransformed[i] = transformCoordinate(coords[i]);
+        }
+        CoordinateArraySequence sequence = new CoordinateArraySequence(coordsTransformed);
+        return new LineString(sequence, new GeometryFactory());
+    }
+    
+    private Coordinate transformCoordinate(Coordinate coord) {
+        double x = ApproxSwissProj.CHtoWGSlat(coord.getX(), coord.getY());
+        double y = ApproxSwissProj.CHtoWGSlng(coord.getX(), coord.getY());
+        
+        return new Coordinate(x, y);
+    }
+
+    private BoundingBox convertBboxToWGS(BoundingBox bbox) {
+        double bottom = ApproxSwissProj.CHtoWGSlat(bbox.getLeft(), bbox.getBottom());
+        double left = ApproxSwissProj.CHtoWGSlng(bbox.getLeft(), bbox.getBottom());
+        double top = ApproxSwissProj.CHtoWGSlat(bbox.getRight(), bbox.getTop());
+        double right = ApproxSwissProj.CHtoWGSlng(bbox.getRight(), bbox.getTop());
+        BoundingBox bboxWGS = new BoundingBox();
+        bboxWGS.setBottom(bottom);
+        bboxWGS.setLeft(left);
+        bboxWGS.setTop(top);
+        bboxWGS.setRight(right);
+
+        return bboxWGS;
+    }
 }
