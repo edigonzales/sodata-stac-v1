@@ -8,9 +8,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
-import ch.so.agi.sodata.stac.model.BoundingBox;
-import ch.so.agi.sodata.stac.model.Item;
-import ch.so.agi.sodata.stac.model.ThemePublication;
+import ch.so.agi.meta2file.model.BoundingBox;
+import ch.so.agi.meta2file.model.Item;
+import ch.so.agi.meta2file.model.ThemePublication;
 import jakarta.annotation.PostConstruct;
 
 import java.io.File;
@@ -49,8 +49,7 @@ public class ConfigService {
     private GeoJsonWriter geoJsonWriter = new GeoJsonWriter();
 
     private static final String PYTHON = "python";
-    // TODO: not working with native image. brauche ich hier aber gar nicht?
-//    private static final String VENV_EXECUTABLE = ConfigService.class.getClassLoader().getResource(Paths.get("venv", "bin", "graalpy").toString()).getPath();
+
     private static final String SOURCE_FILE_NAME = "staccreator.py";
 
     @org.springframework.beans.factory.annotation.Value("${app.configFile}")
@@ -61,10 +60,6 @@ public class ConfigService {
     
     @org.springframework.beans.factory.annotation.Value("${app.filesServerUrl}")
     private String FILES_SERVER_URL;   
-
-    public void foo() {
-        System.out.println("foo");
-    }
     
 //    @Autowired
 //    private Context context;
