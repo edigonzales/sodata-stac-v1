@@ -99,18 +99,21 @@
     </dependencies>
     <build>
         <plugins>
+            <!--https://github.com/oracle/graal/issues/4473 -->
+            <!--
             <plugin>
                 <groupId>org.graalvm.buildtools</groupId>
                 <artifactId>native-maven-plugin</artifactId>
                 <configuration>
                     <buildArgs combine.children="append">
-                        <buildArg>--verbose</buildArg>
-                        <buildArg>--language:python</buildArg>
+                        <buildArg>-XXXXXXXX-verbose</buildArg>
+                        <buildArg>-XXXXXXXX-language:python</buildArg>
                         <buildArg>-Dorg.graalvm.launcher.relative.python.home=${env.JAVA_HOME}/languages/python</buildArg>
                         <buildArg>-Dorg.graalvm.launcher.relative.llvm.home=${env.JAVA_HOME}/languages/llvm</buildArg>
                     </buildArgs>
                 </configuration>
             </plugin>
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
@@ -127,6 +130,7 @@
                                 <requireFilesExist>
                                     <message>You must set JAVA_HOME to a GraalVM with Python installed.</message>
                                     <!-- Eigentlich /bin/graalpy. Scheint aber nicht zu funktionieren wegen symlink. -->
+                                    <!-- Man könnte beanshell Code verwenden (also Java) aber finde ich übertrieben.-->
                                     <files>
                                         <file>${env.JAVA_HOME}/languages/python/bin/python3</file>
                                     </files>

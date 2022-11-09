@@ -24,6 +24,9 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 //import org.graalvm.polyglot.Context;
 //import org.graalvm.polyglot.Source;
 //import org.graalvm.polyglot.Value;
@@ -63,8 +66,8 @@ public class ConfigService {
     
 //    @Autowired
 //    private Context context;
-//    
-//    private StacCreator stacCreator;
+    
+    private StacCreator stacCreator;
 //    
 //    @PostConstruct
 //    public void init() {
@@ -85,56 +88,74 @@ public class ConfigService {
 //    }
 //    
     public void readXml() throws XMLStreamException, IOException, ParseException {
+        String VENV_EXECUTABLE = ConfigService.class.getClassLoader()
+                .getResource(Paths.get("venv", "bin", "graalpy").toString())
+                .getPath();
+
+        InputStreamReader code = new InputStreamReader(ConfigService.class.getClassLoader().getResourceAsStream(SOURCE_FILE_NAME));
+        
         var xmlMapper = new XmlMapper();
         xmlMapper.registerModule(new JavaTimeModule());
         xmlMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         var xif = XMLInputFactory.newInstance();
         var xr = xif.createXMLStreamReader(new FileInputStream(new File(CONFIG_FILE)));
+        
+        try (var context = Context.newBuilder("python")
+                .allowAllAccess(true)
+                .option("python.Executable", VENV_EXECUTABLE)
+                .option("python.ForceImportSite", "true")
+                .build()) {
 
-        var collections = new ArrayList<String>();
-        while (xr.hasNext()) {
-            xr.next();
-            if (xr.getEventType() == XMLStreamConstants.START_ELEMENT) {
-                if ("themePublication".equals(xr.getLocalName())) {
-                    var themePublication = xmlMapper.readValue(xr, ThemePublication.class);                    
-                    log.debug("Identifier: "+ themePublication.getIdentifier());
-                    
-                    // Verwenden wir später, um aus sämtlichen Collections einen Catalog zu machen.
-                    collections.add(themePublication.getIdentifier());
-                    
-                    // Sowohl die BBOX des Themas (der Collection) wie auch der Items
-                    // müssen nach WGS84 transformiert werden. Bei den Items muss zusätzlich
-                    // ebenfalls die Geometrie (der Footprint) transformiert werden.
-                    BoundingBox bboxWGS = convertBboxToWGS(themePublication.getBbox());
-                    themePublication.setBbox(bboxWGS);
-                    
-                    var itemsList = new ArrayList<Item>();
-                    for (Item item : themePublication.getItems()) {
-                        BoundingBox itemBboxWGS = convertBboxToWGS(item.getBbox());
-                        item.setBbox(itemBboxWGS);
-                        
-                        var geom = wktReader.read(item.getGeometry());
-                        var geomWGS = convertGeometryToWGS(geom);
-                        geoJsonWriter.setEncodeCRS(false);
-                        var geomGeoJson = geoJsonWriter.write(geomWGS);
-                        item.setGeometry(geomGeoJson);
-                        
-                        itemsList.add(item);
+            context.eval(Source.newBuilder(PYTHON, code, SOURCE_FILE_NAME).build());
+            
+            Value pystacCreatorClass = context.getPolyglotBindings().getMember("StacCreator");
+            Value pystacCreator = pystacCreatorClass.newInstance();
+
+            stacCreator = pystacCreator.as(StacCreator.class);
+            
+            var collections = new ArrayList<String>();
+            while (xr.hasNext()) {
+                xr.next();
+                if (xr.getEventType() == XMLStreamConstants.START_ELEMENT) {
+                    if ("themePublication".equals(xr.getLocalName())) {
+                        var themePublication = xmlMapper.readValue(xr, ThemePublication.class);
+                        log.debug("Identifier: " + themePublication.getIdentifier());
+
+                        // Verwenden wir später, um aus sämtlichen Collections einen Catalog zu machen.
+                        collections.add(themePublication.getIdentifier());
+
+                        // Sowohl die BBOX des Themas (der Collection) wie auch die der Items
+                        // müssen nach WGS84 transformiert werden. Bei den Items muss zusätzlich
+                        // ebenfalls die Geometrie (der Footprint) transformiert werden.
+                        BoundingBox bboxWGS = convertBboxToWGS(themePublication.getBbox());
+                        themePublication.setBbox(bboxWGS);
+
+                        var itemsList = new ArrayList<Item>();
+                        for (Item item : themePublication.getItems()) {
+                            BoundingBox itemBboxWGS = convertBboxToWGS(item.getBbox());
+                            item.setBbox(itemBboxWGS);
+
+                            var geom = wktReader.read(item.getGeometry());
+                            var geomWGS = convertGeometryToWGS(geom);
+                            geoJsonWriter.setEncodeCRS(false);
+                            var geomGeoJson = geoJsonWriter.write(geomWGS);
+                            item.setGeometry(geomGeoJson);
+
+                            itemsList.add(item);
+                        }
+                        themePublication.setItems(itemsList);
+
+                        stacCreator.create("/Users/stefan/tmp/staccreator/", themePublication, FILES_SERVER_URL, "https://geo.so.ch/stac/");
                     }
-                    themePublication.setItems(itemsList);
-                    
-//                    stacCreator.create("/Users/stefan/tmp/staccreator/", themePublication, FILES_SERVER_URL);
                 }
             }
+            
+            // Weil es kein Request gibt, funktioniert 'ServletUriComponentsBuilder'... nicht.
+            // Die Anwendung weiss so nichts von einem möglichen Reverse Proxy / API-Gateway etc.
+            // Root_href ist somit Teil der Konfiguration. 
+            stacCreator.create_catalog("/Users/stefan/tmp/staccreator/", collections, "https://geo.so.ch/stac/");
         }
-        
-        // Weil es kein Request gibt, funktioniert 'ServletUriComponentsBuilder'... nicht.
-        // Die Anwendung weiss so nichts von einem möglichen Reverse Proxy / API-Gateway etc.
-        // Root_href ist somit Teil der Konfiguration. 
-//        stacCreator.create_catalog("/Users/stefan/tmp/staccreator/", collections, ROOT_HREF);
-        
-//        context.close();
     }
     
     // https://github.com/edigonzales-archiv/geokettle_freeframe_plugin/blob/master/src/main/java/org/catais/plugin/freeframe/FreeFrameTransformator.java

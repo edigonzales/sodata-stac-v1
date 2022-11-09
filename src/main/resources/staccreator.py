@@ -7,7 +7,7 @@ import json
 from datetime import date, datetime, timezone, timedelta
 
 class StacCreator:
-    def create(self, collection_file_path, theme_publication, files_server_url):
+    def create(self, collection_file_path, theme_publication, files_server_url, root_url):
         print("StacCreator.create()")
 
         # Collection
@@ -60,6 +60,8 @@ class StacCreator:
                  datetime=collection_last_publishing_date,
                  properties={})
 
+            #item.set_self_href(href=(root_url + collection_id + "/" + item_id + ".json"))
+
             # Asset(s)
             for fileFormatDTO in theme_publication.getFileFormats():
                 file_abbreviation = fileFormatDTO.getAbbreviation()
@@ -87,13 +89,22 @@ class StacCreator:
 
             collection.add_item(item)
 
-        # https://www.jsonschemavalidator.net/ 
+
+
+
+        # https://www.jsonschemaval§idator.net/ 
         # Gemäss Online-Validator sind die JSON-Dateien korrekt ggü collection- und item Schema. 
         #collection.validate_all()
 
         # Save everything to disk
-        collection.normalize_and_save(root_href=os.path.join(collection_file_path, collection_id),
-                           catalog_type=pystac.CatalogType.SELF_CONTAINED)
+        #collection.normalize_and_save(root_href=os.path.join(collection_file_path, collection_id), catalog_type=pystac.CatalogType.SELF_CONTAINED)
+
+        #collection.set_self_href(href=(root_url + collection_id + "/" + "collection.json"))
+        #collection.normalize_hrefs(root_href=(root_url + collection_id))         
+        #collection.save(catalog_type=pystac.CatalogType.ABSOLUTE_PUBLISHED, dest_href=os.path.join(collection_file_path, collection_id))
+
+        collection.normalize_hrefs(root_href=(root_url + collection_id))
+        collection.save(catalog_type=pystac.CatalogType.SELF_CONTAINED, dest_href=os.path.join(collection_file_path, collection_id))
 
     def create_catalog(self, collection_file_path, collections, root_url):
         print("StacCreator.create_catalog()")
@@ -104,8 +115,12 @@ class StacCreator:
             print("collection_id: " + collection_id)
             collection = pystac.Collection.from_file(os.path.join(collection_file_path,collection_id, "collection.json"))
             catalog.add_child(child=collection)
-            catalog.normalize_hrefs(root_href=root_url);            
-            catalog.save(catalog_type=pystac.CatalogType.ABSOLUTE_PUBLISHED, dest_href=collection_file_path)
+        
+        catalog.normalize_hrefs(root_href=root_url);      
+        #catalog.save(catalog_type=pystac.CatalogType.SELF_CONTAINED, dest_href=os.path.join(collection_file_path)) 
+
+        catalog.set_self_href(href=root_url + "catalog.json")
+        catalog.save(catalog_type=pystac.CatalogType.ABSOLUTE_PUBLISHED, dest_href=os.path.join(collection_file_path))
 
 polyglot.export_value("StacCreator", StacCreator)
 
