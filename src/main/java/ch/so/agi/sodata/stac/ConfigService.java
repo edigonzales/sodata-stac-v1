@@ -68,7 +68,7 @@ public class ConfigService {
 //    private Context context;
     
     private StacCreator stacCreator;
-//    
+ 
 //    @PostConstruct
 //    public void init() {
 //        InputStreamReader code = new InputStreamReader(ConfigService.class.getClassLoader().getResourceAsStream(SOURCE_FILE_NAME));
@@ -151,9 +151,10 @@ public class ConfigService {
                 }
             }
             
-            // Weil es kein Request gibt, funktioniert 'ServletUriComponentsBuilder'... nicht.
+            // Weil es keinen Request gibt, funktioniert 'ServletUriComponentsBuilder'... nicht.
             // Die Anwendung weiss so nichts von einem möglichen Reverse Proxy / API-Gateway etc.
-            // Root_href ist somit Teil der Konfiguration. 
+            // Root_href ist somit Teil der Konfiguration. Sowieso: Wenn wir mit einem CLI die
+            // Stac-Dokumente herstellen, müssen wir das ja auch so machen.
             stacCreator.create_catalog("/Users/stefan/tmp/staccreator/", collections, "https://geo.so.ch/stac/");
         }
     }
