@@ -1,3 +1,4 @@
+import site
 import polyglot
 import os
 import math
@@ -87,6 +88,8 @@ class StacCreator:
 
                 item.add_asset(key=key, asset=asset)
 
+            #item.validate()
+            
             collection.add_item(item)
 
 

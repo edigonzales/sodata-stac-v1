@@ -13,8 +13,24 @@
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
+## Build
+
+```
+CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/tmp/ ROOT_HREF=http://localhost:8080/stac/ ./mvnw package
+```
+
+### Native Image
+
+Das Native Image kann mit Spring Boot momentan nicht erstellt werden: https://github.com/oracle/graal/issues/4473
+
 ```
 CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/Users/stefan/tmp/staccreator/ ROOT_HREF=http://localhost:8080/stac/ ./mvnw -Pnative native:compile
+```
+
+## Run
+
+```
+CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/Users/stefan/tmp/staccreator/ ROOT_HREF=http://localhost:8080/stac/ java -jar target/sodata-stac-0.0.1-SNAPSHOT.jar
 ```
 
 ### Python-Gugus in VS Code

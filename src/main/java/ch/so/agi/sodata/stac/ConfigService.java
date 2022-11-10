@@ -2,7 +2,6 @@ package ch.so.agi.sodata.stac;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
@@ -56,13 +55,17 @@ public class ConfigService {
     private static final String SOURCE_FILE_NAME = "staccreator.py";
 
     @org.springframework.beans.factory.annotation.Value("${app.configFile}")
-    private String CONFIG_FILE;   
+    private String configFile;   
 
     @org.springframework.beans.factory.annotation.Value("${app.rootHref}")
-    private String ROOT_HREF; 
+    private String rootHref; 
     
     @org.springframework.beans.factory.annotation.Value("${app.filesServerUrl}")
-    private String FILES_SERVER_URL;   
+    private String filesServerUrl;   
+    
+    @org.springframework.beans.factory.annotation.Value("${app.stacDirectory}")
+    private String stacDirectory;
+
     
 //    @Autowired
 //    private Context context;
@@ -88,18 +91,20 @@ public class ConfigService {
 //    }
 //    
     public void readXml() throws XMLStreamException, IOException, ParseException {
-        String VENV_EXECUTABLE = ConfigService.class.getClassLoader()
+        var VENV_EXECUTABLE = ConfigService.class.getClassLoader()
                 .getResource(Paths.get("venv", "bin", "graalpy").toString())
                 .getPath();
+        
+        log.info("******: " + VENV_EXECUTABLE);
 
-        InputStreamReader code = new InputStreamReader(ConfigService.class.getClassLoader().getResourceAsStream(SOURCE_FILE_NAME));
+        var code = new InputStreamReader(ConfigService.class.getClassLoader().getResourceAsStream(SOURCE_FILE_NAME));
         
         var xmlMapper = new XmlMapper();
         xmlMapper.registerModule(new JavaTimeModule());
         xmlMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
         var xif = XMLInputFactory.newInstance();
-        var xr = xif.createXMLStreamReader(new FileInputStream(new File(CONFIG_FILE)));
+        var xr = xif.createXMLStreamReader(new FileInputStream(new File(configFile)));
         
         try (var context = Context.newBuilder("python")
                 .allowAllAccess(true)
@@ -146,16 +151,12 @@ public class ConfigService {
                         }
                         themePublication.setItems(itemsList);
 
-                        stacCreator.create("/Users/stefan/tmp/staccreator/", themePublication, FILES_SERVER_URL, "https://geo.so.ch/stac/");
+                        stacCreator.create(stacDirectory, themePublication, filesServerUrl, rootHref);
                     }
                 }
             }
             
-            // Weil es keinen Request gibt, funktioniert 'ServletUriComponentsBuilder'... nicht.
-            // Die Anwendung weiss so nichts von einem möglichen Reverse Proxy / API-Gateway etc.
-            // Root_href ist somit Teil der Konfiguration. Sowieso: Wenn wir mit einem CLI die
-            // Stac-Dokumente herstellen, müssen wir das ja auch so machen.
-            stacCreator.create_catalog("/Users/stefan/tmp/staccreator/", collections, "https://geo.so.ch/stac/");
+            stacCreator.create_catalog(stacDirectory, collections, rootHref);
         }
     }
     
