@@ -74,6 +74,8 @@ public class ConfigService {
 //    private Context context;
     
     private StacCreator stacCreator;
+    
+    // Man könnte in PostConstruct den venv von den Resourcen aufs lokale Filesystem kopieren.
  
 //    @PostConstruct
 //    public void init() {
