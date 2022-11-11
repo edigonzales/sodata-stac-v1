@@ -76,7 +76,10 @@ public class ConfigService {
     private StacCreator stacCreator;
     
     // Man könnte in PostConstruct den venv von den Resourcen aufs lokale Filesystem kopieren.
- 
+    // Irgendein spezieller ResourceResolver ging nicht mit GraalVM, jetzt glaub schon.
+    // https://github.com/edigonzales/repo-checker/blob/main/src/main/java/ch/so/agi/repochecker/CheckerService.java#L123
+    // -> geht das jetzt?
+    
 //    @PostConstruct
 //    public void init() {
 //        InputStreamReader code = new InputStreamReader(ConfigService.class.getClassLoader().getResourceAsStream(SOURCE_FILE_NAME));
