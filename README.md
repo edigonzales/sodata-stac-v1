@@ -16,7 +16,7 @@
 ## Build
 
 ```
-CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/tmp/ ROOT_HREF=http://localhost:8080/stac/ ./mvnw package
+VENV_EXE_PATH=./venv/bin/graalpy CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/tmp/ ROOT_HREF=http://localhost:8080/stac/ ./mvnw package
 ```
 
 ### Native Image
