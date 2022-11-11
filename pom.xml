@@ -103,6 +103,17 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <!-- https://stackoverflow.com/questions/74394484/module-not-found-if-graalpy-is-packaged-in-spring-boot-jar -->
+            <!-- Darum packen wir sich nicht in die Jar-Datei. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                         <exclude>venv/**/*</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
 
             <!-- https://github.com/oracle/graal/issues/4473 -->
             <!--
@@ -225,6 +236,7 @@
                 </file>
             </activation>
         </profile>
+        <!--
         <profile>
             <id>run</id>
             <build>
@@ -258,6 +270,7 @@
                 </file>
             </activation>
         </profile>
+        -->
     </profiles>
     <repositories>
         <repository>

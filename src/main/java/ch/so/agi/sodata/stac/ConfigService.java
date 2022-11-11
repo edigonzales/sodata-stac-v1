@@ -66,6 +66,9 @@ public class ConfigService {
     @org.springframework.beans.factory.annotation.Value("${app.stacDirectory}")
     private String stacDirectory;
 
+    @org.springframework.beans.factory.annotation.Value("${app.venvExePath}")
+    private String venvExePath;
+
     
 //    @Autowired
 //    private Context context;
@@ -91,12 +94,11 @@ public class ConfigService {
 //    }
 //    
     public void readXml() throws XMLStreamException, IOException, ParseException {
-        var VENV_EXECUTABLE = ConfigService.class.getClassLoader()
-                .getResource(Paths.get("venv", "bin", "graalpy").toString())
-                .getPath();
+        // Siehe pom.xml. Funktioniert mit Jar nicht.
+//        var VENV_EXECUTABLE = ConfigService.class.getClassLoader()
+//                .getResource(Paths.get("venv", "bin", "graalpy").toString())
+//                .getPath();
         
-        log.info("******: " + VENV_EXECUTABLE);
-
         var code = new InputStreamReader(ConfigService.class.getClassLoader().getResourceAsStream(SOURCE_FILE_NAME));
         
         var xmlMapper = new XmlMapper();
@@ -108,7 +110,7 @@ public class ConfigService {
         
         try (var context = Context.newBuilder("python")
                 .allowAllAccess(true)
-                .option("python.Executable", VENV_EXECUTABLE)
+                .option("python.Executable", venvExePath)
                 .option("python.ForceImportSite", "true")
                 .build()) {
 
