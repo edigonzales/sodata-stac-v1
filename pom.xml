@@ -105,6 +105,8 @@
             </plugin>
             <!-- https://stackoverflow.com/questions/74394484/module-not-found-if-graalpy-is-packaged-in-spring-boot-jar -->
             <!-- Darum packen wir sich nicht in die Jar-Datei. -->
+            <!-- Wir versuchen es mit Entpacken zur Startzeit -->
+            <!--
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -114,7 +116,8 @@
                     </excludes>
                 </configuration>
             </plugin>
-
+            -->
+            
             <!-- https://github.com/oracle/graal/issues/4473 -->
             <!--
             <plugin>
