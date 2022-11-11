@@ -111,6 +111,7 @@
                 <artifactId>maven-jar-plugin</artifactId>
                 <configuration>
                     <excludes>
+                         <!--<exclude>venv/**/*</exclude>-->
                          <exclude>venv/bin/*</exclude>
                     </excludes>
                 </configuration>
