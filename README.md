@@ -18,7 +18,12 @@
 TODO: überprüfen
 Wenn native eh nicht funktioniert, könnte man wohl ein "-test.properties machen".
 ```
-VENV_EXE_PATH=./venv/bin/graalpy CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/tmp/ ROOT_HREF=http://localhost:8080/stac/ ./mvnw package
+VENV_EXE_PATH=./venv/bin/graalpy CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/tmp/ ROOT_HREF=http://localhost:8080/stac/ ./mvnw package -DskipTests
+```
+(yolo)
+
+```
+docker build -t sogis/sodata-stac -f Dockerfile.jvm .
 ```
 
 ### Native Image

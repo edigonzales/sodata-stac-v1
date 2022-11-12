@@ -102,7 +102,7 @@ public class ConfigService {
     public void readXml() throws XMLStreamException, IOException, ParseException {
         var code = new InputStreamReader(ConfigService.class.getClassLoader().getResourceAsStream(SOURCE_FILE_NAME));
         
-        // Wird mühsame, wenn er als Bean definiert wird, da er dann den Spring-Boot-Standard-Mapper überschreibt.
+        // Wird mühsam, wenn er als Bean definiert wird, da er dann den Spring-Boot-Standard-Mapper überschreibt.
         // In unserem Fall brauchen wir den XmlMapper nur gerade hier.
         var xmlMapper = new XmlMapper();
         xmlMapper.registerModule(new JavaTimeModule());
