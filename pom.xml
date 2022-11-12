@@ -104,20 +104,27 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
             <!-- https://stackoverflow.com/questions/74394484/module-not-found-if-graalpy-is-packaged-in-spring-boot-jar -->
-            <!-- Darum packen wir sich nicht in die Jar-Datei. -->
-            <!-- Wir versuchen es mit Entpacken zur Startzeit -->
+            <!-- 
+            Wir erstellen vorgängig eine Zip-Datei des venv-Ordners und kopieren ihn als Resource. Somit wird die 
+            Zip-Datei in die Jar-Datei gepackt und wir können sie zur Laufzeit entpacken. Weniger aufwändig als 
+            alle Dateien (als Resourcen) einzeln.
+            Bedingt aber bisschen Logik, die zwischen Dev- und Prod-Deployment unterscheidet, was mir wiederum
+            nicht gefällt.
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <configuration>
                     <excludes>
-                         <!--<exclude>venv/**/*</exclude>-->
+                         <exclude>venv/</exclude>
+                         <!--
                          <exclude>venv/bin/*</exclude>
+                         <exclude>venv/**/__pycache__/</exclude>
+                         <exclude>venv/lib/python3.8/site-packages/pip/</exclude>
+                         -->
                     </excludes>
                 </configuration>
-            </plugin>
-
-            
+            </plugin>            
             <!-- https://github.com/oracle/graal/issues/4473 -->
             <!--
             <plugin>
@@ -170,7 +177,8 @@
             <resource>
                 <directory>${project.basedir}</directory>
                 <includes>
-                    <include>venv/**/*</include>
+                    <include>venv/**/*</include> <!-- Wird immer noch benötigt für Dev-Deplyoment -->
+                    <include>venv.zip</include>
                 </includes>
             </resource>
             <resource>
@@ -227,6 +235,24 @@
                                     <environmentVariables>
                                         <VIRTUAL_ENV>${project.basedir}/venv</VIRTUAL_ENV>
                                     </environmentVariables>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>Zip venv for deployment</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>zip</executable>
+                                    <arguments>
+                                        <argument>-y</argument>
+                                        <argument>-r</argument>
+                                        <argument>venv.zip</argument>
+                                        <argument>venv</argument>
+                                        <argument>-x</argument>
+                                        <argument>"venv/bin/*"</argument>
+                                    </arguments>
                                 </configuration>
                             </execution>
                         </executions>

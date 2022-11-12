@@ -49,7 +49,6 @@ class StacCreator:
         for itemDTO in theme_publication.getItems():
             item_extent = [collection_bbox.getLeft(),collection_bbox.getBottom(),collection_bbox.getRight(),collection_bbox.getTop()],
 
-            # TODO: Stimmt das?
             if len(theme_publication.getItems()) == 1:
                 item_id = collection_id
             else:
@@ -115,7 +114,7 @@ class StacCreator:
         catalog = pystac.Catalog(id='sogis', description='Geodaten Kanton Solothurn.')
 
         for collection_id in collections:
-            print("collection_id: " + collection_id)
+            print("<collection_id> " + collection_id)
             collection = pystac.Collection.from_file(os.path.join(collection_file_path,collection_id, "collection.json"))
             catalog.add_child(child=collection)
         

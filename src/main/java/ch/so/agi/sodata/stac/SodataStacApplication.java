@@ -4,8 +4,6 @@ import java.nio.file.Paths;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-//import org.graalvm.polyglot.Context;
-//import org.graalvm.polyglot.Engine;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -26,7 +24,7 @@ public class SodataStacApplication {
         return new ForwardedHeaderFilter();
     } 
 
-    // Brauche ich gar nich als Bean? Was habe ich für Vorteile? Ich benötige
+    // Brauche ich gar nicht als Bean? Was habe ich für Vorteile? Ich benötige
     // es nur an einer Stelle, dort kann ich den Context auch gleich wieder schliessen.
     
     // see: https://blogs.oracle.com/javamagazine/post/java-graalvm-polyglot-python-r
@@ -49,7 +47,7 @@ public class SodataStacApplication {
 //                .build();
 //    }
     
-    // Anwendung ist fertig gestartet. 
+    // CommandLineRunner: Anwendung ist fertig gestartet. 
     // Kubernetes: Live aber nicht ready.
     
     // Parsen des XML mit den Themenpublikation und Umwandlung nach Stac.

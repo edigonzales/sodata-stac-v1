@@ -15,6 +15,8 @@
 
 ## Build
 
+TODO: überprüfen
+Wenn native eh nicht funktioniert, könnte man wohl ein "-test.properties machen".
 ```
 VENV_EXE_PATH=./venv/bin/graalpy CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/tmp/ ROOT_HREF=http://localhost:8080/stac/ ./mvnw package
 ```
@@ -24,7 +26,7 @@ VENV_EXE_PATH=./venv/bin/graalpy CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/tmp/ 
 Das Native Image kann mit Spring Boot momentan nicht erstellt werden: https://github.com/oracle/graal/issues/4473
 
 ```
-CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/Users/stefan/tmp/staccreator/ ROOT_HREF=http://localhost:8080/stac/ ./mvnw -Pnative native:compile
+...more... CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/Users/stefan/tmp/staccreator/ ROOT_HREF=http://localhost:8080/stac/ ./mvnw -Pnative native:compile
 ```
 
 ## Run

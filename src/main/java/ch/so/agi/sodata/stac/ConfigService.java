@@ -15,8 +15,11 @@ import jakarta.annotation.PostConstruct;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 
 import javax.xml.stream.XMLInputFactory;
@@ -26,17 +29,6 @@ import javax.xml.stream.XMLStreamException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-//import org.graalvm.polyglot.Context;
-//import org.graalvm.polyglot.Source;
-//import org.graalvm.polyglot.Value;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.geom.LinearRing;
-import org.locationtech.jts.geom.MultiPolygon;
-import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.geom.impl.CoordinateArraySequence;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.io.geojson.GeoJsonWriter;
@@ -66,46 +58,52 @@ public class ConfigService {
     @org.springframework.beans.factory.annotation.Value("${app.stacDirectory}")
     private String stacDirectory;
 
-    @org.springframework.beans.factory.annotation.Value("${app.venvExePath}")
-    private String venvExePath;
+    @org.springframework.beans.factory.annotation.Value("${app.venvParentPath}")
+    private String venvParentPath;
 
-    
 //    @Autowired
 //    private Context context;
+
+    private String venvExePath;
     
     private StacCreator stacCreator;
-    
-    // Man könnte in PostConstruct den venv von den Resourcen aufs lokale Filesystem kopieren.
-    // Irgendein spezieller ResourceResolver ging nicht mit GraalVM, jetzt glaub schon.
-    // https://github.com/edigonzales/repo-checker/blob/main/src/main/java/ch/so/agi/repochecker/CheckerService.java#L123
-    // -> geht das jetzt?
-    
-//    @PostConstruct
-//    public void init() {
-//        InputStreamReader code = new InputStreamReader(ConfigService.class.getClassLoader().getResourceAsStream(SOURCE_FILE_NAME));
-//
-//        Source source;
-//        try {
-//            source = Source.newBuilder(PYTHON, code, SOURCE_FILE_NAME).build();
-//        } catch (IOException e) {
-//            throw new RuntimeException(e);
-//        }
-//        context.eval(source);
-//        
-//        Value pystacCreatorClass = context.getPolyglotBindings().getMember("StacCreator");
-//        Value pystacCreator = pystacCreatorClass.newInstance();
-//        
-//        stacCreator = pystacCreator.as(StacCreator.class);
-//    }
-//    
-    public void readXml() throws XMLStreamException, IOException, ParseException {
-        // Siehe pom.xml. Funktioniert mit Jar nicht.
-//        var VENV_EXECUTABLE = ConfigService.class.getClassLoader()
-//                .getResource(Paths.get("venv", "bin", "graalpy").toString())
-//                .getPath();
+
+    @PostConstruct
+    public void init() throws IOException {
+        /* 
+         * Im Dev-Modus muss venvParentPath null sein. Dann wird angenommen,
+         * dass der venv-Ordner lokal vorhanden ist und nichts gemacht
+         * werden muss.
+         * Wenn venvParentPath ungleich null ist, bedeutet das, dass wir
+         * die venv.zip-Datei aus den Resourcen entpacken müssen.
+         */
+        if (venvParentPath != null) {
+            var VENV_ZIP_NAME = "venv.zip";
+            
+            try (InputStream is = getClass().getResourceAsStream("/"+VENV_ZIP_NAME)) {
+                File file = Paths.get(venvParentPath, new File(VENV_ZIP_NAME).getName()).toFile();
+                Files.copy(is, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                
+                String zipFilePath = Paths.get(venvParentPath, VENV_ZIP_NAME).toFile().getAbsolutePath();
+                log.debug("<zipFilePath> {}", zipFilePath);
+                Zip.unzip(zipFilePath, new File(venvParentPath));
+                
+                venvExePath = Paths.get(venvParentPath, "venv", "bin", "graalpy").toString();
+            }
+        } else {
+            venvExePath = ConfigService.class.getClassLoader()
+                    .getResource(Paths.get("venv", "bin", "graalpy").toString())
+                    .getPath();
+        }
         
+        log.debug("<venvExePath> {}", venvExePath);
+    }
+    
+    public void readXml() throws XMLStreamException, IOException, ParseException {
         var code = new InputStreamReader(ConfigService.class.getClassLoader().getResourceAsStream(SOURCE_FILE_NAME));
         
+        // Wird mühsame, wenn er als Bean definiert wird, da er dann den Spring-Boot-Standard-Mapper überschreibt.
+        // In unserem Fall brauchen wir den XmlMapper nur gerade hier.
         var xmlMapper = new XmlMapper();
         xmlMapper.registerModule(new JavaTimeModule());
         xmlMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -137,19 +135,16 @@ public class ConfigService {
                         // Verwenden wir später, um aus sämtlichen Collections einen Catalog zu machen.
                         collections.add(themePublication.getIdentifier());
 
-                        // Sowohl die BBOX des Themas (der Collection) wie auch die der Items
-                        // müssen nach WGS84 transformiert werden. Bei den Items muss zusätzlich
-                        // ebenfalls die Geometrie (der Footprint) transformiert werden.
-                        BoundingBox bboxWGS = convertBboxToWGS(themePublication.getBbox());
+                        BoundingBox bboxWGS = GeometryTransformation.convertBboxToWGS(themePublication.getBbox());
                         themePublication.setBbox(bboxWGS);
 
                         var itemsList = new ArrayList<Item>();
                         for (Item item : themePublication.getItems()) {
-                            BoundingBox itemBboxWGS = convertBboxToWGS(item.getBbox());
+                            BoundingBox itemBboxWGS = GeometryTransformation.convertBboxToWGS(item.getBbox());
                             item.setBbox(itemBboxWGS);
 
                             var geom = wktReader.read(item.getGeometry());
-                            var geomWGS = convertGeometryToWGS(geom);
+                            var geomWGS = GeometryTransformation.convertGeometryToWGS(geom);
                             geoJsonWriter.setEncodeCRS(false);
                             var geomGeoJson = geoJsonWriter.write(geomWGS);
                             item.setGeometry(geomGeoJson);
@@ -165,71 +160,5 @@ public class ConfigService {
             
             stacCreator.create_catalog(stacDirectory, collections, rootHref);
         }
-    }
-    
-    // https://github.com/edigonzales-archiv/geokettle_freeframe_plugin/blob/master/src/main/java/org/catais/plugin/freeframe/FreeFrameTransformator.java
-    private Geometry convertGeometryToWGS(Geometry sourceGeometry) {
-        Geometry targetGeometry = null;
-
-        if (sourceGeometry instanceof MultiPolygon) {
-            int num = sourceGeometry.getNumGeometries();
-            Polygon[] polys = new Polygon[num];
-            for(int j=0; j<num; j++) {
-                polys[j] = transformPolygon((Polygon) sourceGeometry.getGeometryN(j));
-            }    
-            targetGeometry = (Geometry) new GeometryFactory().createMultiPolygon(polys);
-            
-        } else if (sourceGeometry instanceof Polygon) {
-            targetGeometry = (Geometry) transformPolygon((Polygon) sourceGeometry);
-        } else {
-            targetGeometry = sourceGeometry;
-        }
-        return targetGeometry;
-    }
-    
-    private Polygon transformPolygon(Polygon p) {
-        LineString shell = (LineString) p.getExteriorRing();
-        LineString shellTransformed = transformLineString(shell);
-        
-        LinearRing[] rings = new LinearRing[p.getNumInteriorRing()];
-        int num = p.getNumInteriorRing();
-        for(int i=0; i<num; i++) {
-            LineString line = transformLineString(p.getInteriorRingN(i));   
-            rings[i] = new LinearRing(line.getCoordinateSequence(), new GeometryFactory()); 
-        }               
-        return new Polygon(new LinearRing(shellTransformed.getCoordinateSequence(), new GeometryFactory()), rings, new GeometryFactory());
-    }
-
-    private LineString transformLineString(LineString l) {
-        Coordinate[] coords = l.getCoordinates();
-        int num = coords.length;
-
-        Coordinate[] coordsTransformed = new Coordinate[num];
-        for(int i=0; i<num; i++) {
-            coordsTransformed[i] = transformCoordinate(coords[i]);
-        }
-        CoordinateArraySequence sequence = new CoordinateArraySequence(coordsTransformed);
-        return new LineString(sequence, new GeometryFactory());
-    }
-    
-    private Coordinate transformCoordinate(Coordinate coord) {
-        double x = ApproxSwissProj.CHtoWGSlat(coord.getX(), coord.getY());
-        double y = ApproxSwissProj.CHtoWGSlng(coord.getX(), coord.getY());
-        
-        return new Coordinate(x, y);
-    }
-
-    private BoundingBox convertBboxToWGS(BoundingBox bbox) {
-        double bottom = ApproxSwissProj.CHtoWGSlat(bbox.getLeft(), bbox.getBottom());
-        double left = ApproxSwissProj.CHtoWGSlng(bbox.getLeft(), bbox.getBottom());
-        double top = ApproxSwissProj.CHtoWGSlat(bbox.getRight(), bbox.getTop());
-        double right = ApproxSwissProj.CHtoWGSlng(bbox.getRight(), bbox.getTop());
-        BoundingBox bboxWGS = new BoundingBox();
-        bboxWGS.setBottom(bottom);
-        bboxWGS.setLeft(left);
-        bboxWGS.setTop(top);
-        bboxWGS.setRight(right);
-
-        return bboxWGS;
-    }
+    }    
 }
