@@ -135,7 +135,7 @@ public class ConfigService {
                         // Verwenden wir später, um aus sämtlichen Collections einen Catalog zu machen.
                         collections.add(themePublication.getIdentifier());
 
-                        BoundingBox bboxWGS = GeometryTransformation.convertBboxToWGS(themePublication.getBbox());
+                        var bboxWGS = GeometryTransformation.convertBboxToWGS(themePublication.getBbox());
                         themePublication.setBbox(bboxWGS);
 
                         var itemsList = new ArrayList<Item>();

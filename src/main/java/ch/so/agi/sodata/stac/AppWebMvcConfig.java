@@ -19,5 +19,4 @@ public class AppWebMvcConfig implements WebMvcConfigurer {
         // Verzeichnisangabe explizit verlangt.
         registry.addResourceHandler("/stac/**").addResourceLocations("file:"+stacDirectory+File.separator);
     }
-
 }
