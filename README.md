@@ -13,6 +13,10 @@
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
+### Python-Gugus in VS Code
+
+In den Settings `Python: Default Interpreter Path` den absoluten Pfad zu "graalpy" setzen. Dann einen ganzen Ordner (=Workspace?) öffnen, damit die third party libs gefunden werden.
+
 ## Build
 
 TODO: überprüfen
@@ -40,6 +44,7 @@ Das Native Image kann mit Spring Boot momentan nicht erstellt werden: https://gi
 CONFIG_FILE=$PWD/datasearch.xml STAC_DIR=/Users/stefan/tmp/staccreator/ ROOT_HREF=http://localhost:8080/stac/ java -jar target/sodata-stac-0.0.1-SNAPSHOT.jar
 ```
 
-### Python-Gugus in VS Code
+```
+docker run -p 8080:8080 -v ~/tmp:/stac sogis/sodata-stac-jvm
+```
 
-In den Settings `Python: Default Interpreter Path` den absoluten Pfad zu "graalpy" setzen. Dann einen ganzen Ordner (=Workspace?) öffnen, damit die third party libs gefunden werden.
