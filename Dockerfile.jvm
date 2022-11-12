@@ -14,6 +14,13 @@ VOLUME ["/config"]
 
 COPY datasearch.xml /config/datasearch.xml
 
+WORKDIR /stac
+RUN chown $UID:0 . && \
+    chmod 0775 . && \
+    ls -la
+
+VOLUME ["/stac"]
+
 ENV HOME=/app
 WORKDIR $HOME
 
